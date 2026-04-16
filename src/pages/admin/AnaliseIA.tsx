@@ -5,11 +5,17 @@ import { AISetup } from "../../components/admin/AISetup";
 import { PromptEditor } from "../../components/admin/PromptEditor";
 import { analyzeWithGroq } from "../../services/groq";
 import { mockAdminAthletes } from "../../data/mock";
+import type { AthleteResult } from "../../components/admin/AthleteResultRow";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useToast } from "../../hooks/useToast";
 
 const GENERAL_PROMPT_TEMPLATE = `Você é um especialista em performance atlética e metodologia CrossFit.
-Analise os seguintes dados de treino dos alunos do box Reserva CrossFit
+Analise os dados abaixo com atenção especial ao detalhamento por movimento.
+Quando um atleta aparece como Scaled/Beginner, os movimentos onde ainda não
+atingiu RX estão listados individualmente — use isso para identificar padrões
+de limitação técnica específicos por grupo muscular ou habilidade.
+
+Analise os dados de treino dos alunos do box Reserva CrossFit
 (Sorocaba/SP) no período de {dataInicio} a {dataFim} e forneça:
 
 1. ANÁLISE GERAL DE PERFORMANCE
@@ -60,8 +66,45 @@ Dados do atleta:
 
 Responda em português, de forma personalizada e motivacional.`;
 
-function buildGeneralData(from: string, to: string) {
-  return JSON.stringify({
+type StoredCheckins = Record<string, AthleteResult[]>;
+
+function levelLabel(lv: "rx" | "scaled" | "beginner"): string {
+  if (lv === "rx") return "RX";
+  if (lv === "scaled") return "Scaled";
+  return "Beginner";
+}
+
+function formatCheckinsByMovement(checkins: StoredCheckins, from: string, to: string): string {
+  const lines: string[] = [];
+  const sessionKeys = Object.keys(checkins).sort();
+  for (const sessionKey of sessionKeys) {
+    const datePart = sessionKey.slice(0, 10);
+    if (datePart < from || datePart > to) continue;
+    const list = checkins[sessionKey] ?? [];
+    const present = list.filter((a) => a.checkedIn && a.level);
+    if (!present.length) continue;
+    lines.push(`\n📅 Sessão ${sessionKey}:`);
+    for (const a of present) {
+      const lvl = a.level || "--";
+      const res = a.result || "—";
+      if (a.level === "RX" || !a.movementResults?.length) {
+        lines.push(`  • ${a.name} — ${lvl} — ${res}`);
+        if (a.notes) lines.push(`      obs: ${a.notes}`);
+        continue;
+      }
+      lines.push(`  • ${a.name} — ${lvl} — ${res}`);
+      for (const m of a.movementResults) {
+        const note = m.note ? ` (${m.note})` : "";
+        lines.push(`      - ${m.movementName}: ${levelLabel(m.level)}${note}`);
+      }
+      if (a.notes) lines.push(`      obs geral: ${a.notes}`);
+    }
+  }
+  return lines.length ? lines.join("\n") : "(sem check-ins registrados no período)";
+}
+
+function buildGeneralData(from: string, to: string, checkins: StoredCheckins) {
+  const base = {
     periodo: { inicio: from, fim: to },
     totalAlunos: 10,
     mediaFrequencia: "4.2 treinos/semana",
@@ -77,7 +120,9 @@ function buildGeneralData(from: string, to: string) {
       { movimento: "Clean & Jerk", mediaBox: "78kg", evol30d: "+2kg" },
     ],
     presenca: { media: "82%", melhor: "Beatriz Alves 95%", pior: "Paula Nogueira 30%" },
-  }, null, 2);
+  };
+  const movementDetail = formatCheckinsByMovement(checkins, from, to);
+  return `${JSON.stringify(base, null, 2)}\n\nDetalhamento por movimento (check-ins do período):${movementDetail}`;
 }
 
 function buildAthleteData(name: string) {
@@ -101,6 +146,7 @@ function buildAthleteData(name: string) {
 
 export default function AnaliseIA() {
   const [localKey, setLocalKey] = useLocalStorage("reserva-groq-key", "");
+  const [storedCheckins] = useLocalStorage<StoredCheckins>("reserva-checkins", {});
   const envKey = import.meta.env.VITE_GROQ_API_KEY?.trim();
   const localKeyTrimmed = localStorage.getItem("reserva-groq-key")?.trim();
   const apiKey = envKey || localKeyTrimmed || "";
@@ -138,7 +184,7 @@ export default function AnaliseIA() {
 
     let prompt: string;
     if (mode === "general") {
-      const data = buildGeneralData(dateFrom, dateTo);
+      const data = buildGeneralData(dateFrom, dateTo, storedCheckins);
       prompt = generalPrompt
         .replace("{dataInicio}", dateFrom)
         .replace("{dataFim}", dateTo)

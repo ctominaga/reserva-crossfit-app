@@ -5,9 +5,11 @@ import { AthleteResultRow, type AthleteResult } from "../../components/admin/Ath
 import {
   buildWeekSchedule,
   mockAdminAthletes,
+  mockWOD,
   getMockOCRResults,
   type ScheduleOverrides,
   type CapacityOverrides,
+  type Movement,
 } from "../../data/mock";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useToast } from "../../hooks/useToast";
@@ -24,6 +26,9 @@ export default function CheckinAdmin() {
 
   const [scheduleOverrides] = useLocalStorage<ScheduleOverrides>("reserva-schedule-overrides", {});
   const [capacityOverrides] = useLocalStorage<CapacityOverrides>("reserva-capacity-overrides", {});
+  const [customWOD] = useLocalStorage<typeof mockWOD | null>("reserva-wod-custom", null);
+
+  const wodMovements: Movement[] = customWOD?.main?.movements ?? mockWOD.main.movements;
 
   const week = useMemo(() => {
     const base = new Date();
@@ -150,6 +155,7 @@ export default function CheckinAdmin() {
           <AthleteResultRow
             key={a.athleteId}
             data={a}
+            wodMovements={wodMovements}
             onChange={(updated) => updateAthlete(i, updated)}
             onSave={() => saveAthlete(i)}
           />

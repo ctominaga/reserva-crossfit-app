@@ -30,6 +30,14 @@ export interface Movement {
   description?: string;
 }
 
+export type MovementLevel = 'rx' | 'scaled' | 'beginner';
+
+export interface MovementResult {
+  movementName: string;
+  level: MovementLevel;
+  note?: string;
+}
+
 export type PRCategory =
   | 'barbell'
   | 'endurance'

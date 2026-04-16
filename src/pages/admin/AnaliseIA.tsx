@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { Brain, Copy, RefreshCw, Loader2 } from "lucide-react";
 import { AISetup } from "../../components/admin/AISetup";
 import { PromptEditor } from "../../components/admin/PromptEditor";
-import { analyzeWithGroq, getGroqApiKey, isGroqApiKeyFromEnv } from "../../services/groq";
+import { analyzeWithGroq } from "../../services/groq";
 import { mockAdminAthletes } from "../../data/mock";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useToast } from "../../hooks/useToast";
@@ -101,8 +101,11 @@ function buildAthleteData(name: string) {
 
 export default function AnaliseIA() {
   const [localKey, setLocalKey] = useLocalStorage("reserva-groq-key", "");
-  const envKeyPresent = isGroqApiKeyFromEnv();
-  const apiKey = getGroqApiKey();
+  const envKey = import.meta.env.VITE_GROQ_API_KEY?.trim();
+  const localKeyTrimmed = localStorage.getItem("reserva-groq-key")?.trim();
+  const apiKey = envKey || localKeyTrimmed || "";
+  const hasKey = !!apiKey;
+  const envKeyPresent = !!envKey;
   const [showSetup, setShowSetup] = useState(false);
   const [mode, setMode] = useState<"general" | "individual">("general");
   const [dateFrom, setDateFrom] = useState("2026-03-01");
@@ -114,7 +117,7 @@ export default function AnaliseIA() {
   const [result, setResult] = useState<string | null>(null);
   const { push } = useToast();
 
-  if (!apiKey || showSetup) {
+  if (!hasKey || showSetup) {
     return (
       <div className="px-4 py-4 max-w-xl mx-auto pb-24 space-y-4">
         <h1 className="font-display font-black uppercase text-2xl">Análise IA</h1>

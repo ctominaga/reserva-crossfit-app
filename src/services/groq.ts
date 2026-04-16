@@ -7,15 +7,14 @@ import Groq from 'groq-sdk';
 export const GROQ_STORAGE_KEY = 'reserva-groq-key';
 
 export function isGroqApiKeyFromEnv(): boolean {
-  return Boolean(import.meta.env.VITE_GROQ_API_KEY);
+  return Boolean(import.meta.env.VITE_GROQ_API_KEY?.trim());
 }
 
 export function getGroqApiKey(): string {
-  return (
-    import.meta.env.VITE_GROQ_API_KEY
-    || localStorage.getItem(GROQ_STORAGE_KEY)
-    || ''
-  );
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY?.trim()
+    || localStorage.getItem(GROQ_STORAGE_KEY)?.trim()
+    || '';
+  return apiKey;
 }
 
 export async function analyzeWithGroq(

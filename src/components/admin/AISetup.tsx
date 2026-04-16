@@ -36,7 +36,7 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
         <div>
           <h3 className="font-display font-black uppercase text-lg">Configurar Groq (IA)</h3>
           <p className="text-xs text-muted">
-            {locked ? "✅ Chave configurada pelo administrador" : "Cole sua Groq API Key abaixo"}
+            {locked ? "✅ Chave configurada pelo sistema" : "Cole sua Groq API Key abaixo"}
           </p>
         </div>
       </div>
@@ -44,7 +44,7 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
       <div className="relative">
         <input
           type={show && !locked ? "text" : "password"}
-          value={locked ? "••••••••••••••••••••" : key}
+          value={locked ? "gsk_••••••••••••••••" : key}
           onChange={(e) => setKey(e.target.value)}
           disabled={locked}
           placeholder="gsk_..."
@@ -63,7 +63,7 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
 
       <p className="text-[11px] text-muted">
         {locked
-          ? "A chave foi definida via variável de ambiente (VITE_GROQ_API_KEY). Clique em \"Alterar chave\" para sobrescrever neste navegador."
+          ? "A chave foi definida via variável de ambiente (VITE_GROQ_API_KEY). Clique em \"Usar chave personalizada\" para sobrescrever neste navegador."
           : "A chave é salva apenas neste navegador e nunca enviada para nossos servidores."}
       </p>
 
@@ -75,7 +75,7 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
       <div className="flex gap-3">
         {locked ? (
           <button type="button" onClick={() => setOverride(true)} className="btn-primary flex-1">
-            Alterar chave
+            Usar chave personalizada
           </button>
         ) : (
           <button type="button" onClick={handleSave} className="btn-primary flex-1">

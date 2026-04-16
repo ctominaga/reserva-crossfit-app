@@ -20,6 +20,11 @@ export function Header() {
               ADMIN
             </span>
           )}
+          {user?.isDemo && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-warning/20 text-warning font-bold uppercase tracking-wider">
+              DEMO
+            </span>
+          )}
         </Link>
         <div className="flex items-center gap-3">
           <button

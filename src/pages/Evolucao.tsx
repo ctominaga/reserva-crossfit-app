@@ -15,15 +15,18 @@ import { Badge } from "../components/ui/Badge";
 import { Modal } from "../components/ui/Modal";
 import { PRCard } from "../components/features/PRCard";
 import { RankingList } from "../components/features/RankingList";
+import { WODRecommendationCard } from "../components/features/WODRecommendationCard";
 import {
   mockPRs,
   mockBenchmarks,
   mockRanking,
   mockWeeklyFrequency,
+  mockWOD,
   buildFrequency,
   type PR,
   type PRCategory,
 } from "../data/mock";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useToast } from "../hooks/useToast";
 
 type Tab = "prs" | "benchmarks" | "frequency" | "ranking";
@@ -301,6 +304,13 @@ function FrequencyTab() {
   const freq = useMemo(() => buildFrequency(new Date()), []);
   const trained = freq.filter((f) => f.trained).length;
   const avgPerWeek = (trained / (60 / 7)).toFixed(1);
+  const [customWOD] = useLocalStorage<typeof mockWOD | null>("reserva-wod-custom", null);
+  const wod = customWOD ?? mockWOD;
+  const apiKey =
+    import.meta.env.VITE_AI_API_KEY?.trim() ||
+    localStorage.getItem("reserva-groq-key")?.trim() ||
+    "";
+  const todayCacheKey = new Date().toISOString().slice(0, 10);
 
   // Split by month for nicer grouping
   const byMonth = useMemo(() => {
@@ -316,6 +326,26 @@ function FrequencyTab() {
 
   return (
     <div className="space-y-4">
+      {apiKey && (
+        <div>
+          <p className="text-xs text-muted font-bold uppercase tracking-wider mb-2">
+            Recomendação para o treino de hoje
+          </p>
+          <WODRecommendationCard
+            wod={{
+              title: wod.title,
+              type: wod.type,
+              duration: wod.duration,
+              movements: wod.main.movements,
+              scaling: wod.main.scaling,
+            }}
+            cacheKey={todayCacheKey}
+            apiKey={apiKey}
+            defaultExpanded={false}
+          />
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
         <Card>

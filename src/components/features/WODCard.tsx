@@ -1,5 +1,5 @@
 import { ChevronDown, Flame } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 export interface WODHistoryEntry {
   date: string;
@@ -8,7 +8,13 @@ export interface WODHistoryEntry {
   summary: string;
 }
 
-export function WODHistoryCard({ entry }: { entry: WODHistoryEntry }) {
+export function WODHistoryCard({
+  entry,
+  children,
+}: {
+  entry: WODHistoryEntry;
+  children?: (open: boolean) => ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="card">
@@ -32,8 +38,9 @@ export function WODHistoryCard({ entry }: { entry: WODHistoryEntry }) {
         />
       </button>
       {open && (
-        <div className="px-4 pb-4 text-sm text-muted border-t border-border pt-3 animate-fade-in">
-          {entry.summary}
+        <div className="px-4 pb-4 space-y-3 border-t border-border pt-3 animate-fade-in">
+          <p className="text-sm text-muted">{entry.summary}</p>
+          {children?.(open)}
         </div>
       )}
     </div>

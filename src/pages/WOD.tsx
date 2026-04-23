@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Play, Flame, Clock, Info, History } from "lucide-react";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { Modal } from "../components/ui/Modal";
 import { WODHistoryCard } from "../components/features/WODCard";
+import { WODRecommendationCard } from "../components/features/WODRecommendationCard";
 import {
   mockWOD,
   mockWODHistory,
@@ -12,8 +13,25 @@ import {
 } from "../data/mock";
 import { useToast } from "../hooks/useToast";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import {
+  cleanOldRecommendationCache,
+  saveWODResult,
+} from "../services/wod-recommendation.service";
 
 type Scale = "rx" | "scaled" | "beginner";
+
+const SCALE_LABEL: Record<Scale, string> = {
+  rx: "RX",
+  scaled: "Scaled",
+  beginner: "Beginner",
+};
+
+function brDateToIso(br: string): string {
+  // "14/04/2026" -> "2026-04-14"
+  const [d, m, y] = br.split("/");
+  if (!d || !m || !y) return br;
+  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
 
 export default function WOD() {
   const [scale, setScale] = useState<Scale>("rx");
@@ -25,6 +43,15 @@ export default function WOD() {
 
   const wod = useMemo(() => customWOD ?? mockWOD, [customWOD]);
 
+  const apiKey =
+    import.meta.env.VITE_AI_API_KEY?.trim() ||
+    localStorage.getItem("reserva-groq-key")?.trim() ||
+    "";
+
+  useEffect(() => {
+    cleanOldRecommendationCache();
+  }, []);
+
   const movementsWithLib = wod.main.movements.map((mv) => {
     const lib = mockMovementLibrary.find((l) => l.name === mv.name);
     return { ...mv, description: lib?.description ?? "Descrição em breve." };
@@ -35,10 +62,20 @@ export default function WOD() {
       push("Informe o tempo ou reps primeiro", "error");
       return;
     }
+    const today = new Date().toISOString().slice(0, 10);
+    saveWODResult({
+      date: today,
+      title: wod.title,
+      type: wod.type,
+      summary: `${SCALE_LABEL[scale]} — ${time.trim()}${notes.trim() ? ` · ${notes.trim()}` : ""}`,
+      movements: wod.main.movements.map((m) => m.name),
+    });
     push("Resultado registrado! 💪 Possível PR!", "success");
     setTime("");
     setNotes("");
   };
+
+  const todayCacheKey = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="px-4 py-4 max-w-xl mx-auto pb-24 space-y-5">
@@ -56,6 +93,22 @@ export default function WOD() {
           {wod.title}
         </h1>
       </Card>
+
+      {/* Recomendação personalizada (IA) */}
+      {apiKey && (
+        <WODRecommendationCard
+          wod={{
+            title: wod.title,
+            type: wod.type,
+            duration: wod.duration,
+            movements: wod.main.movements,
+            scaling: wod.main.scaling,
+          }}
+          cacheKey={todayCacheKey}
+          apiKey={apiKey}
+          defaultExpanded={true}
+        />
+      )}
 
       {/* Aquecimento */}
       <section>
@@ -107,7 +160,7 @@ export default function WOD() {
                 onClick={() => setScale(s)}
                 className={`chip ${scale === s ? "chip-active" : ""} uppercase`}
               >
-                {s === "rx" ? "RX" : s === "scaled" ? "Scaled" : "Beginner"}
+                {SCALE_LABEL[s]}
               </button>
             ))}
           </div>
@@ -204,9 +257,28 @@ export default function WOD() {
           WODs anteriores
         </h2>
         <div className="space-y-2">
-          {mockWODHistory.map((e, i) => (
-            <WODHistoryCard key={i} entry={e} />
-          ))}
+          {mockWODHistory.map((e, i) => {
+            const iso = brDateToIso(e.date);
+            return (
+              <WODHistoryCard key={i} entry={e}>
+                {(open) =>
+                  open && apiKey ? (
+                    <WODRecommendationCard
+                      wod={{
+                        title: e.title,
+                        type: e.type,
+                        movements: [],
+                        scaling: { rx: "", scaled: "", beginner: "" },
+                      }}
+                      cacheKey={iso}
+                      apiKey={apiKey}
+                      defaultExpanded={false}
+                    />
+                  ) : null
+                }
+              </WODHistoryCard>
+            );
+          })}
         </div>
       </section>
 

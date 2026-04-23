@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, ExternalLink, Key, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
-import { isGroqApiKeyFromEnv } from "../../services/groq";
+import { isAIKeyFromEnv } from "../../services/ai.service";
 
 interface AISetupProps {
   apiKey: string;
@@ -9,7 +9,7 @@ interface AISetupProps {
 }
 
 export function AISetup({ apiKey, onSave }: AISetupProps) {
-  const envKeyPresent = isGroqApiKeyFromEnv();
+  const envKeyPresent = isAIKeyFromEnv();
   const [key, setKey] = useState(apiKey);
   const [show, setShow] = useState(false);
   const [howTo, setHowTo] = useState(false);
@@ -34,9 +34,9 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
           {locked ? <ShieldCheck className="w-5 h-5 text-primary" /> : <Key className="w-5 h-5 text-primary" />}
         </div>
         <div>
-          <h3 className="font-display font-black uppercase text-lg">Configurar Groq (IA)</h3>
+          <h3 className="font-display font-black uppercase text-lg">Configurar IA (Gemini ou Groq)</h3>
           <p className="text-xs text-muted">
-            {locked ? "✅ Chave configurada pelo sistema" : "Cole sua Groq API Key abaixo"}
+            {locked ? "✅ Chave configurada pelo sistema" : "Cole sua chave Gemini (AIza...) ou Groq (gsk_...) abaixo"}
           </p>
         </div>
       </div>
@@ -44,10 +44,10 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
       <div className="relative">
         <input
           type={show && !locked ? "text" : "password"}
-          value={locked ? "gsk_••••••••••••••••" : key}
+          value={locked ? "••••••••••••••••" : key}
           onChange={(e) => setKey(e.target.value)}
           disabled={locked}
-          placeholder="gsk_..."
+          placeholder="AIza... ou gsk_..."
           className="w-full px-4 py-3 pr-10 rounded-lg bg-surface-2 border border-border focus:border-primary outline-none text-sm font-mono disabled:opacity-60 disabled:cursor-not-allowed"
         />
         {!locked && (
@@ -63,13 +63,13 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
 
       <p className="text-[11px] text-muted">
         {locked
-          ? "A chave foi definida via variável de ambiente (VITE_GROQ_API_KEY). Clique em \"Usar chave personalizada\" para sobrescrever neste navegador."
+          ? "A chave foi definida via variável de ambiente (VITE_AI_API_KEY). Clique em \"Usar chave personalizada\" para sobrescrever neste navegador."
           : "A chave é salva apenas neste navegador e nunca enviada para nossos servidores."}
       </p>
 
       <p className="text-xs text-primary mt-2 flex items-center gap-1">
         <span>✅</span>
-        <span>Gratuito — 500.000 tokens/dia · Sem cartão de crédito</span>
+        <span>Gratuito — Gemini (aistudio.google.com) ou Groq (console.groq.com)</span>
       </p>
 
       <div className="flex gap-3">
@@ -83,7 +83,7 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
           </button>
         )}
         <a
-          href="https://console.groq.com/keys"
+          href="https://aistudio.google.com/app/apikey"
           target="_blank"
           rel="noopener noreferrer"
           className="btn-secondary flex items-center gap-1.5 px-4"
@@ -102,13 +102,28 @@ export function AISetup({ apiKey, onSave }: AISetupProps) {
         {howTo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
       {howTo && (
-        <ol className="text-xs text-muted space-y-1.5 pl-4 list-decimal">
-          <li>Acesse <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">console.groq.com</a></li>
-          <li>Faça login (ou crie uma conta gratuita)</li>
-          <li>Vá em "API Keys" → "Create API Key"</li>
-          <li>Copie a chave (começa com "gsk_")</li>
-          <li>Cole no campo acima e salve</li>
-        </ol>
+        <div className="text-xs text-muted space-y-3">
+          <div>
+            <p className="font-bold text-text uppercase tracking-wider text-[11px] mb-1">Gemini (recomendado)</p>
+            <ol className="space-y-1 pl-4 list-decimal">
+              <li>Acesse <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">aistudio.google.com/app/apikey</a></li>
+              <li>Faça login com a conta Google</li>
+              <li>Clique em "Create API Key"</li>
+              <li>Copie a chave (começa com "AIza")</li>
+              <li>Cole no campo acima e salve</li>
+            </ol>
+          </div>
+          <div>
+            <p className="font-bold text-text uppercase tracking-wider text-[11px] mb-1">Groq (alternativa)</p>
+            <ol className="space-y-1 pl-4 list-decimal">
+              <li>Acesse <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">console.groq.com/keys</a></li>
+              <li>Faça login (ou crie uma conta gratuita)</li>
+              <li>Vá em "API Keys" → "Create API Key"</li>
+              <li>Copie a chave (começa com "gsk_")</li>
+              <li>Cole no campo acima e salve</li>
+            </ol>
+          </div>
+        </div>
       )}
     </div>
   );

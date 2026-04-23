@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { Brain, Copy, RefreshCw, Loader2 } from "lucide-react";
 import { AISetup } from "../../components/admin/AISetup";
 import { PromptEditor } from "../../components/admin/PromptEditor";
-import { analyzeWithGroq } from "../../services/groq";
+import { analyzeWithAI } from "../../services/ai.service";
 import { mockAdminAthletes } from "../../data/mock";
 import type { AthleteResult } from "../../components/admin/AthleteResultRow";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
@@ -147,7 +147,7 @@ function buildAthleteData(name: string) {
 export default function AnaliseIA() {
   const [localKey, setLocalKey] = useLocalStorage("reserva-groq-key", "");
   const [storedCheckins] = useLocalStorage<StoredCheckins>("reserva-checkins", {});
-  const envKey = import.meta.env.VITE_GROQ_API_KEY?.trim();
+  const envKey = import.meta.env.VITE_AI_API_KEY?.trim();
   const localKeyTrimmed = localStorage.getItem("reserva-groq-key")?.trim();
   const apiKey = envKey || localKeyTrimmed || "";
   const hasKey = !!apiKey;
@@ -197,7 +197,7 @@ export default function AnaliseIA() {
     }
 
     try {
-      const text = await analyzeWithGroq(prompt, apiKey);
+      const text = await analyzeWithAI(prompt, apiKey);
       setResult(text);
     } catch (err) {
       push((err as Error).message || "Erro ao gerar análise", "error");
@@ -227,7 +227,7 @@ export default function AnaliseIA() {
           }}
           className="text-xs text-muted hover:text-text transition"
         >
-          {envKeyPresent ? "Alterar chave" : "Configurar Groq"}
+          {envKeyPresent ? "Alterar chave" : "Configurar IA"}
         </button>
       </div>
 
@@ -296,7 +296,7 @@ export default function AnaliseIA() {
       <PromptEditor
         prompt={mode === "general" ? generalPrompt : individualPrompt}
         onChange={mode === "general" ? setGeneralPrompt : setIndividualPrompt}
-        label="Prompt enviado ao Groq"
+        label="Prompt enviado à IA"
       />
 
       {/* Analyze button */}
@@ -308,7 +308,7 @@ export default function AnaliseIA() {
         {loading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Analisando com Groq / LLaMA 3.3{mode === "individual" ? ` — ${selectedAthlete}` : ""}...
+            Analisando com IA{mode === "individual" ? ` — ${selectedAthlete}` : ""}...
           </>
         ) : (
           <>

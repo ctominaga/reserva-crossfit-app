@@ -7,6 +7,11 @@ import Groq from 'groq-sdk';
 
 export const AI_STORAGE_KEY = 'reserva-groq-key';
 
+const GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+];
+
 export function isAIKeyFromEnv(): boolean {
   return Boolean(import.meta.env.VITE_AI_API_KEY?.trim());
 }
@@ -30,12 +35,22 @@ export async function analyzeWithAI(
 
   try {
     if (isGemini) {
-      const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      if (!text) throw new Error('Resposta vazia.');
-      return text;
+      let lastError = '';
+      for (const modelName of GEMINI_MODELS) {
+        try {
+          const genAI = new GoogleGenerativeAI(key);
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(prompt);
+          const text = result.response.text();
+          if (text) return text;
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          lastError = msg;
+          console.warn(`Modelo ${modelName} falhou:`, msg);
+          continue;
+        }
+      }
+      throw new Error(`Todos os modelos Gemini falharam: ${lastError}`);
     }
 
     if (isGroq) {

@@ -116,6 +116,23 @@ function buildPrompt(wod: WODData, athlete: AthleteProfile): string {
     .filter(Boolean)
     .join('\n');
 
+  const goalInstruction = (() => {
+    switch (wod.type) {
+      case 'AMRAP':
+        return `"goal": "Meta em número de rounds completos + reps parciais. Ex: 'Completar 8 rounds + 5 reps'. Baseie no histórico do atleta. Seja específico e realista."`;
+      case 'For Time':
+        return `"goal": "Meta de tempo para completar o WOD. Ex: 'Terminar em menos de 12:00'. Baseie no histórico do atleta e nos benchmarks conhecidos."`;
+      case 'EMOM':
+        return `"goal": "Meta de trabalho por intervalo. Ex: 'Manter 12+ reps/minuto sem descanso forçado nos últimos rounds'. Seja específico."`;
+      case 'Chipper':
+        return `"goal": "Meta de tempo ou de manutenção de ritmo. Ex: 'Finalizar em até 25:00, sem parar mais de 10s por vez nos movimentos ginásticos'."`;
+      case 'Strength':
+        return `"goal": "Meta de carga ou volume. Ex: 'Atingir 90kg no Back Squat (75% do PR atual de 120kg)'. Baseie nos PRs do atleta."`;
+      default:
+        return `"goal": "Meta concreta e mensurável para este WOD específico, com número, tempo ou carga. Ex: '8 rounds', 'sub 10:00', '80kg'."`;
+    }
+  })();
+
   return `Você é um coach especialista em CrossFit. Analise o WOD abaixo e o perfil do atleta para gerar recomendações personalizadas.
 
 WOD:
@@ -138,12 +155,20 @@ ${recentList}
 
 Com base nesses dados, responda SOMENTE em JSON válido, sem markdown, sem explicações, exatamente neste formato:
 {
-  "goal": "Meta concisa e motivacional para este WOD específico (1-2 frases, máx 100 caracteres)",
-  "strategy": "Estratégia detalhada de execução para este atleta específico (2-4 frases, máx 300 caracteres)",
+  ${goalInstruction},
+  "strategy": "Estratégia detalhada de execução para este atleta (2-4 frases, máx 300 caracteres). Inclua partições de sets, ritmo e pontos de atenção específicos para os movimentos deste WOD.",
   "scaling": "RX" | "Scaled" | "Beginner"
 }
 
-Personalize para o nível real do atleta. Seja direto, técnico e motivacional. Responda em português brasileiro.`;
+IMPORTANTE para a meta:
+- Para AMRAP: indicar rounds esperados (ex: "7-8 rounds")
+- Para For Time: indicar tempo alvo (ex: "sub 14:00")
+- Para Strength: indicar % do PR ou carga alvo
+- Para EMOM: indicar meta por intervalo
+- A meta deve ser desafiadora mas atingível para este atleta específico
+- Baseie-se nos PRs e benchmarks fornecidos
+
+Responda em português brasileiro.`;
 }
 
 const recommendationCache = new Map<string, WODRecommendation>();

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, Save, Minus, AlertTriangle } from "lucide-react";
+import { Plus, X, Save, Minus, AlertTriangle, Loader2 } from "lucide-react";
 import { Card } from "../../components/ui/Card";
 import {
   DEFAULT_CLASS_TIMES,
@@ -10,6 +10,12 @@ import {
 } from "../../data/mock";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useToast } from "../../hooks/useToast";
+import {
+  getWODRecommendation,
+  cleanOldRecommendationCache,
+  clearRecommendationCache,
+  type WODData,
+} from "../../services/wod-recommendation.service";
 
 interface WODMovement {
   name: string;
@@ -71,6 +77,7 @@ function WODTab({ setCustomWOD, push }: { setCustomWOD: (v: object | null) => vo
   const [scalingScaled, setScalingScaled] = useState("");
   const [scalingBeginner, setScalingBeginner] = useState("");
   const [cooldown, setCooldown] = useState("Foam roller 5 min\nHip flexor stretch 2 min por lado");
+  const [publishing, setPublishing] = useState(false);
 
   const addMovement = () => setMovements([...movements, { name: "", reps: "", weight: "" }]);
   const removeMovement = (i: number) => setMovements(movements.filter((_, idx) => idx !== i));
@@ -80,22 +87,67 @@ function WODTab({ setCustomWOD, push }: { setCustomWOD: (v: object | null) => vo
     setMovements(next);
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!title.trim()) { push("Informe um título para o WOD", "error"); return; }
     const d = new Date(date + "T12:00:00");
     const weekday = d.toLocaleDateString("pt-BR", { weekday: "long" });
     const dayMonth = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+    const resolvedMovements = movements
+      .filter((m) => m.name)
+      .map((m) => ({
+        name: m.name,
+        reps: m.reps ? `${m.reps} reps` : undefined,
+        weight: m.weight || undefined,
+      }));
+    const resolvedScaling = {
+      rx: scalingRx || "Conforme prescrito.",
+      scaled: scalingScaled || "Reduzir carga 30-40%.",
+      beginner: scalingBeginner || "Foque em técnica com carga leve.",
+    };
+
     setCustomWOD({
-      date: d.toISOString(), dateLabel: `${weekday} — ${dayMonth}`, type, duration: Number(duration), title,
+      date: d.toISOString(),
+      dateLabel: `${weekday} — ${dayMonth}`,
+      type,
+      duration: Number(duration),
+      title,
       warmup: warmup.split("\n").filter(Boolean),
       main: {
         description: `${duration} min ${type}`,
-        movements: movements.filter((m) => m.name).map((m) => ({ name: m.name, reps: m.reps ? `${m.reps} reps` : undefined, weight: m.weight || undefined })),
-        scaling: { rx: scalingRx || "Conforme prescrito.", scaled: scalingScaled || "Reduzir carga 30-40%.", beginner: scalingBeginner || "Foque em técnica com carga leve." },
+        movements: resolvedMovements,
+        scaling: resolvedScaling,
       },
       cooldown: cooldown.split("\n").filter(Boolean),
     });
-    push("WOD publicado com sucesso! Os alunos serão notificados.", "success");
+
+    const apiKey =
+      import.meta.env.VITE_AI_API_KEY?.trim() ||
+      localStorage.getItem("reserva-groq-key")?.trim() ||
+      "";
+
+    if (apiKey) {
+      setPublishing(true);
+      try {
+        clearRecommendationCache(date);
+        const wodData: WODData = {
+          title,
+          type,
+          duration: Number(duration),
+          movements: resolvedMovements,
+          scaling: resolvedScaling,
+        };
+        await getWODRecommendation(wodData, apiKey, date);
+        push("WOD publicado! Recomendação gerada para os alunos. 💚", "success");
+      } catch {
+        push("WOD publicado! (Recomendação será gerada quando o aluno acessar)", "info");
+      } finally {
+        setPublishing(false);
+      }
+    } else {
+      push("WOD publicado com sucesso! 💚", "success");
+    }
+
+    cleanOldRecommendationCache();
   };
 
   return (
@@ -160,8 +212,30 @@ function WODTab({ setCustomWOD, push }: { setCustomWOD: (v: object | null) => vo
       </section>
 
       <div className="flex gap-3">
-        <button onClick={() => { setTitle(""); push("Edição cancelada", "info"); }} className="btn-secondary flex-1">Cancelar</button>
-        <button onClick={handlePublish} className="btn-primary flex-1 flex items-center justify-center gap-2"><Save className="w-4 h-4" /> Publicar WOD</button>
+        <button
+          onClick={() => { setTitle(""); push("Edição cancelada", "info"); }}
+          disabled={publishing}
+          className="btn-secondary flex-1 disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handlePublish}
+          disabled={publishing}
+          className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-60"
+        >
+          {publishing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Gerando recomendação IA...</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              <span>Publicar WOD</span>
+            </>
+          )}
+        </button>
       </div>
     </>
   );

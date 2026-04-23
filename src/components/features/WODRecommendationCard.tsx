@@ -30,12 +30,14 @@ export function WODRecommendationCard({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [noCacheYet, setNoCacheYet] = useState(false);
 
   const load = useCallback(
     async (force = false) => {
       if (!apiKey) return;
       setLoading(true);
       setError(null);
+      setNoCacheYet(false);
       if (force) clearRecommendationCache(cacheKey);
       try {
         const result = await getWODRecommendation(wod, apiKey, cacheKey);
@@ -49,16 +51,25 @@ export function WODRecommendationCard({
     [apiKey, cacheKey, wod]
   );
 
+  // Apenas lê do cache — sem chamar a IA automaticamente.
   useEffect(() => {
-    if (expanded && !rec && !loading && !error) {
-      load();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded]);
+    if (!apiKey) return;
+    setError(null);
+    setRec(null);
+    setNoCacheYet(false);
 
-  useEffect(() => {
-    if (defaultExpanded) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const localCacheKey = `reserva-wod-rec-${cacheKey}`;
+    const cached = localStorage.getItem(localCacheKey);
+    if (cached) {
+      try {
+        setRec(JSON.parse(cached) as WODRecommendation);
+      } catch {
+        localStorage.removeItem(localCacheKey);
+        setError('Cache inválido. Clique em "Gerar agora" para criar sua recomendação.');
+      }
+    } else {
+      setNoCacheYet(true);
+    }
   }, [cacheKey, apiKey]);
 
   if (!apiKey) return null;
@@ -113,13 +124,27 @@ export function WODRecommendationCard({
           )}
 
           {error && !loading && (
-            <div className="flex items-center justify-between bg-danger/10 border border-danger/30 rounded-lg p-3">
+            <div className="flex items-center justify-between bg-danger/10 border border-danger/30 rounded-lg p-3 gap-2">
               <span className="text-xs text-danger font-medium">{error}</span>
               <button
                 onClick={() => load(true)}
                 className="text-xs text-danger underline ml-2 shrink-0"
               >
                 Tentar novamente
+              </button>
+            </div>
+          )}
+
+          {noCacheYet && !loading && !error && (
+            <div className="flex items-center justify-between py-1 gap-2 flex-wrap">
+              <span className="text-xs text-muted">
+                Recomendação será gerada quando o coach publicar o WOD.
+              </span>
+              <button
+                onClick={() => load()}
+                className="text-xs text-primary underline flex-shrink-0"
+              >
+                Gerar agora
               </button>
             </div>
           )}
